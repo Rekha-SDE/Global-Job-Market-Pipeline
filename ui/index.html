@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0b0e17">
+  <title>Global Career Map</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" crossorigin="">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="#dashboard" aria-label="Global Career Map home">
+        <span class="brand-mark"><svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="12"/><ellipse cx="16" cy="16" rx="5" ry="12"/><path d="M4.5 13h23M4.5 19h23"/><path d="m23 4 2 5 5 2-5 2-2 5-2-5-5-2 5-2z"/></svg></span>
+        <span class="brand-name">Global Career<br><b>Map</b></span>
+      </a>
+      <div class="workspace-label">WORKSPACE <span>⌄</span></div>
+      <nav class="main-nav" aria-label="Main navigation">
+        <a class="nav-item active" href="#dashboard"><span class="nav-icon">▦</span>Dashboard</a>
+        <a class="nav-item" href="#map"><span class="nav-icon">◎</span>Explore Map</a>
+        <a class="nav-item" href="#map"><span class="nav-icon">▤</span>Jobs</a>
+        <a class="nav-item" href="#map"><span class="nav-icon">✳</span>Internships</a>
+        <a class="nav-item" href="#map"><span class="nav-icon">▣</span>Companies</a>
+        <a class="nav-item" href="#map"><span class="nav-icon">◷</span>Interview Insights</a>
+        <a class="nav-item" href="#map"><span class="nav-icon">✧</span>AI Roadmap <span class="tiny-pill">NEW</span></a>
+        <a class="nav-item" href="#map"><span class="nav-icon">☆</span>Saved</a>
+        <a class="nav-item" href="#map"><span class="nav-icon">▣</span>Applications</a>
+        <a class="nav-item" href="#alerts"><span class="nav-icon">♧</span>Alerts &amp; Notifications <span class="nav-badge">3</span></a>
+        <a class="nav-item" href="#alerts"><span class="nav-icon">⚙</span>Settings</a>
+      </nav>
+      <section class="side-card filters-card">
+        <div class="side-card-title"><span class="title-icon purple">☷</span><div><b>Quick filters</b><small>Find your next opportunity</small></div><button class="icon-button plain reset-filters" aria-label="Reset filters">↻</button></div>
+        <label class="field-label" for="country-filter">Country</label>
+        <div class="select-wrap"><select id="country-filter"><option value="">All countries</option><option>United States</option><option>United Kingdom</option><option>Germany</option><option>Switzerland</option><option>Netherlands</option></select></div>
+        <label class="field-label" for="mode-filter">Work mode</label>
+        <div class="select-wrap"><select id="mode-filter"><option value="">Any work mode</option><option>Remote</option><option>Hybrid</option><option>On-site</option></select></div>
+        <label class="field-label" for="type-filter">Job type</label>
+        <div class="select-wrap"><select id="type-filter"><option value="">All opportunities</option><option>Full-time</option><option>Internship</option></select></div>
+        <label class="field-label" for="experience-filter">Experience level</label>
+        <div class="select-wrap"><select id="experience-filter"><option value="">Any experience</option><option>Entry level</option><option>Mid level</option><option>Senior level</option></select></div>
+        <button class="button button-primary apply-filter">Apply filters <span>→</span></button>
+      </section>
+      <section class="side-card match-card">
+        <div class="side-card-title"><span class="title-icon green">✧</span><div><b>Profile match score</b><small>Looking good!</small></div><span class="info-dot">i</span></div>
+        <div class="score-row"><div class="score-ring"><div><b>85%</b><small>match</small></div></div><p>Your profile is a strong<br>match for <b>32</b> open roles.</p></div>
+        <a class="text-link" href="#map">Improve your profile <span>→</span></a>
+      </section>
+      <div class="sidebar-footer"><span class="status-dot"></span>All systems operational <span class="help-link">Help center</span></div>
+    </aside>
+
+    <main class="main-content" id="dashboard">
+      <header class="topbar">
+        <div class="breadcrumb">Pages <span>/</span> <b>Dashboard</b></div>
+        <div class="top-actions">
+          <label class="global-search"><span>⌕</span><input id="global-search" type="search" placeholder="Search jobs, companies, locations..."><kbd>⌘ K</kbd></label>
+          <button class="icon-button top-bell" aria-label="Notifications">♧<i></i></button>
+          <button class="profile-chip"><span class="avatar avatar-user">AM</span><span class="profile-name"><b>Alex Morgan</b><small>Job seeker</small></span><span class="chevron">⌄</span></button>
+        </div>
+      </header>
+      <section class="map-section" id="map" aria-label="Explore opportunities on the map">
+        <div class="map-filter-row">
+          <span class="map-filter-caption">Showing opportunities in</span>
+          <label class="map-country-label"><select id="map-country" aria-label="Filter map by country">
+            <option value="all">All Countries</option><option value="United States">United States</option><option value="United Kingdom">United Kingdom</option><option value="Germany">Germany</option><option value="Netherlands">Netherlands</option><option value="Switzerland">Switzerland</option>
+          </select></label>
+          <label><input id="jobs-toggle" type="checkbox" value="job" checked><span class="check-icon"></span>Jobs</label>
+          <label><input id="internships-toggle" type="checkbox" value="internship" checked><span class="check-icon"></span>Internships</label>
+          <button class="map-full-button" id="reset-map">View Full Map <span>↗</span></button>
+        </div>
+        <div class="map-card">
+          <div id="career-map" aria-label="World map with company job and internship markers"></div>
+          <p class="file-protocol-notice" id="file-protocol-notice" hidden>Open this page with VS Code Live Server so map tiles can load.</p>
+        </div>
+      </section>
+    </main>
+
+    <aside class="right-panel" id="alerts">
+      <section class="activity-card">
+        <div class="activity-title"><h2>Notifications</h2><button class="text-button" id="mark-read">Mark all read</button></div>
+        <div class="notification-tabs" role="tablist" aria-label="Notification type"><button class="active" data-notif-tab="all">All <span>5</span></button><button data-notif-tab="job">Jobs</button><button data-notif-tab="internship">Internships</button></div>
+        <div id="notification-list"></div>
+        <button class="view-notifications">View all notifications <span>→</span></button>
+      </section>
+      <section class="alerts-card">
+        <div class="alerts-head"><span class="alert-head-icon">♧</span><div><h2>Your Alerts <span id="alert-count">(5)</span></h2><p>Stay ahead of new opportunities.</p></div><button class="icon-button plain" aria-label="Alert options">···</button></div>
+        <div class="alert-list" id="alert-list"></div>
+        <button class="button button-primary create-alert">＋ Create New Alert</button>
+        <div class="alert-tip"><span>✧</span><p><b>Pro tip</b><br>Turn on alerts to be first in line when your dream role opens.</p></div>
+      </section>
+      <div class="right-footer"><span class="online-dot"></span>You're all caught up <span>↗</span></div>
+    </aside>
+  </div>
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js" crossorigin=""></script>
+  <script src="map-style.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
