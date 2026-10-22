@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0b0e17">
+  <meta name="description" content="Create your Global Career Map account.">
+  <title>Create account · Global Career Map</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="auth.css">
+</head>
+<body>
+  <main class="auth-layout">
+    <section class="auth-story" aria-label="About Global Career Map">
+      <a class="brand" href="index.html" aria-label="Global Career Map home">
+        <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="12"/><ellipse cx="16" cy="16" rx="5" ry="12"/><path d="M4.5 13h23M4.5 19h23"/><path d="m23 4 2 5 5 2-5 2-2 5-2-5-5-2 5-2z"/></svg></span>
+        <span class="brand-name">Global Career<br><b>Map</b></span>
+      </a>
+      <div class="story-copy">
+        <span class="eyebrow"><i></i> A WORLD OF OPPORTUNITY</span>
+        <h1>Your next move<br><span>could be anywhere.</span></h1>
+        <p>Create your free account and start exploring jobs and internships in places you’d love to work.</p>
+        <div class="story-stat"><span class="stat-icon">◎</span><span><b>Make room for what’s next.</b><small>Browse global opportunities in one place.</small></span></div>
+      </div>
+      <div class="story-orbit orbit-one"></div><div class="story-orbit orbit-two"></div>
+      <p class="story-footer">OPPORTUNITIES, WHEREVER YOU WANT TO GO</p>
+    </section>
+    <section class="auth-side">
+      <div class="auth-card">
+        <a class="mobile-brand" href="index.html">Global Career <b>Map</b></a>
+        <div class="auth-heading"><span class="eyebrow">GET STARTED</span><h2>Create your account</h2><p>Set up your workspace in just a moment.</p></div>
+        <form class="auth-form" data-auth-form novalidate>
+          <label for="full-name">Full name</label>
+          <input id="full-name" name="name" type="text" autocomplete="name" placeholder="Alex Morgan" required minlength="2">
+          <label for="email">Email address</label>
+          <input id="email" name="email" type="email" autocomplete="email" placeholder="you@example.com" required>
+          <label for="password">Password</label>
+          <div class="password-wrap"><input id="password" name="password" type="password" autocomplete="new-password" placeholder="At least 8 characters" required minlength="8"><button class="password-toggle" type="button" aria-label="Show password" data-password-toggle>Show</button></div>
+          <label class="remember terms-check"><input type="checkbox" name="terms" required> <span>I agree to the <a href="#" data-demo-link>Terms</a> and <a href="#" data-demo-link>Privacy Policy</a>.</span></label>
+          <button class="submit-button" type="submit">Create account <span aria-hidden="true">→</span></button>
+          <p class="form-message" role="status" aria-live="polite" hidden></p>
+        </form>
+        <p class="auth-switch">Already have an account? <a href="login.html">Sign in</a></p>
+        <a class="back-link" href="index.html">← Back to the career map</a>
+      </div>
+      <footer class="auth-legal">Free to explore. Your next opportunity may be closer than you think.</footer>
+    </section>
+  </main>
+  <script src="auth.js"></script>
+</body>
+</html>

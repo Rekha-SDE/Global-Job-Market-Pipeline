@@ -78,6 +78,8 @@ The dashboard never talks to the database directly. It asks the API:
 | Click a company logo | `GET /jobs?company=...&city=...` |
 | Tick or untick Jobs / Internships | `GET /map-markers?jobs=...&internships=...` |
 
+Login and registration call `POST /auth/login` and `POST /auth/register`. Successful requests return a random bearer token; the database stores only its SHA-256 hash in `auth_sessions`. Passwords use salted scrypt hashes in `users`. The dashboard validates the session with `GET /auth/me` and revokes it with `POST /auth/logout`. The API creates the account tables on the first auth request, and `sql/001_create_tables.sql` includes them for manual setup too.
+
 ## Design decisions
 
 - **Raw data is kept unchanged.** If the cleaning rules change later, the cleaning can be run again on the same raw files.
