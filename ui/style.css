@@ -279,3 +279,35 @@ body{font-size:15px}
 .map-company-pin{width:38px;height:38px;border:2px solid #fff;box-shadow:0 0 0 3px rgba(255,255,255,.1),0 3px 12px rgba(0,0,0,.7)}
 .map-company-pin img{width:24px;height:24px}
 .map-company-fallback{width:26px;height:26px;font-size:13px}
+
+/* ===== Country job bubbles (real data from the API) ===== */
+.country-bubble{display:grid;place-items:center;border-radius:50%;background:#fff;color:#0d1a3a;border:2px solid #f2b705;box-shadow:0 0 0 4px rgba(242,183,5,.18),0 4px 16px rgba(0,0,0,.65);transition:transform .18s}
+.country-bubble b{font-size:13px;font-weight:800}
+.cm-marker:hover .country-bubble{transform:scale(1.1)}
+.country-popup{min-width:230px;max-width:290px;font-family:Inter,system-ui,sans-serif;color:#e9ebf3}
+.country-popup h4{margin:0 0 2px;font-size:16px}
+.country-popup .popup-count{font-size:12px;color:#aab4cf;margin-bottom:6px}
+.country-popup .popup-count b{color:#fff}
+.country-popup h5{margin:10px 0 4px;font-size:11px;letter-spacing:.6px;text-transform:uppercase;color:#8fa6d6}
+.country-popup ul{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.country-popup li{font-size:12px;display:flex;justify-content:space-between;gap:10px}
+.country-popup li span{color:#f2b705;font-weight:700}
+.country-popup li a{color:#c9d6ff;text-decoration:none}
+.country-popup li a:hover{text-decoration:underline}
+.country-popup li small{display:block;color:#8d97b3;font-size:11px}
+.map-total{position:absolute;left:12px;bottom:34px;z-index:5;background:rgba(10,14,28,.9);border:1px solid #343c50;border-radius:10px;padding:8px 14px;color:#fff;pointer-events:none}
+.map-total b{display:block;font-size:20px;line-height:1.2}
+.map-total small{font-size:11px;color:#9aa5c4}
+
+/* ===== Company logos on the map (zoomed in) ===== */
+.company-pin{position:relative;display:block;border-radius:50%;background:#fff;border:2px solid #fff;box-shadow:0 0 0 3px rgba(255,255,255,.12),0 4px 14px rgba(0,0,0,.7);transition:transform .18s}
+.cm-marker:hover .company-pin{transform:scale(1.12)}
+.company-logo{position:relative;display:grid;place-items:center;width:100%;height:100%;border-radius:50%;overflow:hidden;color:#fff;font-weight:800}
+.company-logo b{font-size:15px}
+.company-logo img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff;padding:5px;opacity:0;transition:opacity .2s}
+.company-logo.has-logo img{opacity:1}
+.pin-count{position:absolute;right:-6px;top:-6px;min-width:20px;height:20px;padding:0 5px;border-radius:10px;background:#f2b705;color:#0d1a3a;font:800 11px/20px Inter,system-ui,sans-serif;font-style:normal;text-align:center;box-shadow:0 2px 6px rgba(0,0,0,.6)}
+.popup-head{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+.popup-head .company-logo{width:40px;height:40px;flex:none}
+.popup-head h4{margin:0;font-size:15px}
+.map-total small.hint{display:block;margin-top:2px;color:#f2b705}

@@ -1,19 +1,5 @@
 // Add your Logo.dev token here when you are ready to load company logos.
-const LOGO_DEV_TOKEN = "PASTE_YOUR_TOKEN_HERE";
-
-// Sample marker data; replace this array with API results later.
-const companies = [
-  {name:'Google',city:'Zurich, Switzerland',coords:[47.376,8.541],country:'Switzerland',kind:'internship',role:'Software Engineering Intern',tag:'Internship',color:'#4285f4'},
-  {name:'Microsoft',city:'Singapore',coords:[1.352,103.82],country:'Singapore',kind:'job',role:'Data Engineer',tag:'Full-time',color:'#00a4ef'},
-  {name:'Amazon',city:'New York, United States',coords:[40.713,-74.006],country:'United States',kind:'job',role:'Backend Developer',tag:'Full-time',color:'#ff9900'},
-  {name:'Apple',city:'Cupertino, United States',coords:[37.323,-122.032],country:'United States',kind:'internship',role:'Machine Learning Intern',tag:'Internship',color:'#a2aaad'},
-  {name:'Spotify',city:'Stockholm, Sweden',coords:[59.329,18.069],country:'Sweden',kind:'job',role:'Machine Learning Engineer',tag:'Full-time',color:'#1db954'},
-  {name:'Tesla',city:'Berlin, Germany',coords:[52.52,13.405],country:'Germany',kind:'job',role:'Embedded Software Engineer',tag:'Full-time',color:'#e82127'},
-  {name:'Meta',city:'London, United Kingdom',coords:[51.507,-0.128],country:'United Kingdom',kind:'job',role:'Data Scientist',tag:'Full-time',color:'#0866ff'},
-  {name:'ASML',city:'Eindhoven, Netherlands',coords:[51.441,5.478],country:'Netherlands',kind:'internship',role:'Software Intern',tag:'Internship',color:'#00a3e0'},
-  {name:'Swisscom',city:'Bern, Switzerland',coords:[46.948,7.447],country:'Switzerland',kind:'internship',role:'Data Analytics Intern',tag:'Internship',color:'#ff3b30'},
-  {name:'NVIDIA',city:'Santa Clara, United States',coords:[37.354,-121.956],country:'United States',kind:'internship',role:'Data Science Intern',tag:'Internship',color:'#76b900'}
-];
+const LOGO_DEV_TOKEN = "pk_aGmc-1iUSfeCn_eLyY4fow";
 
 const notifications = [
   {group:'New',kind:'job',icon:'S',color:'#7956d8',text:'<b>Stripe</b> viewed your application for <b>Product Designer</b>.',time:'12 minutes ago',unread:true},
@@ -41,52 +27,290 @@ function renderNotifications(kind='all') {
   const items=notifications.filter(n=>kind==='all'||n.kind===kind);
   document.querySelector('#notification-list').innerHTML=items.map(n=>{const heading=n.group!==group?`<div class="notification-group-label">${n.group}</div>`:'';group=n.group;return `${heading}<article class="notification-item"><span class="notification-icon" style="background:${n.color}22;color:${n.color}">${n.icon}</span><div class="notification-body"><p>${n.text}</p><small>${n.time}</small></div>${n.unread?'<i class="notification-unread"></i>':''}</article>`;}).join('');
 }
+// ---- Real data from the API (src/api/main.py) ----
+// Start the API first:  uvicorn src.api.main:app --reload
+const API_URL='http://127.0.0.1:8000';
+
+async function fetchJson(path) {
+  const response=await fetch(API_URL+path);
+  if(!response.ok) throw new Error(`API answered ${response.status} for ${path}`);
+  return response.json();
+}
+
+// Job titles and company names come from the internet, so we escape them before showing them.
+function escapeHtml(value) {
+  const entities={'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'};
+  return String(value==null?'':value).replace(/[&<>"']/g,char=>entities[char]);
+}
+function safeUrl(value) {
+  return /^https?:\/\//i.test(String(value||''))?escapeHtml(value):'#';
+}
+function formatNumber(value) {
+  return Number(value||0).toLocaleString('en-US');
+}
+function isChecked(selector) {
+  const box=document.querySelector(selector);
+  return box?box.checked:true;
+}
+function showApiNotice(message) {
+  const notice=document.querySelector('#file-protocol-notice');
+  if(notice){notice.textContent=message;notice.hidden=false;}
+}
+function hideApiNotice() {
+  const notice=document.querySelector('#file-protocol-notice');
+  if(notice) notice.hidden=true;
+}
+
+// Show only the markers allowed by the country dropdown, and hide bubbles that would overlap.
 function updateMapFilters() {
   const countrySelect=document.querySelector('#map-country');
-  const selectedCountry=countrySelect?countrySelect.value:'all';
+  const selected=countrySelect?countrySelect.value:'all';
   (window.careerMapMarkers||[]).forEach(item=>{
-    const toggle=document.querySelector(`#${item.kind==='job'?'jobs':'internships'}-toggle`);
-    const typeEnabled=toggle?toggle.checked:true;
-    const countryEnabled=selectedCountry==='all'||item.country===selectedCountry;
-    item.allowed=typeEnabled&&countryEnabled;
+    item.allowed=selected==='all'||item.country===selected;
   });
   declutterMarkers();
 }
 
-// Hide a logo when it would sit on top of an earlier one. Zoom in and the hidden ones appear.
+// ---- Two levels on the map ----
+// Zoomed out : one bubble per country (number of jobs).
+// Zoomed in  : one logo per company and city (where the jobs are).
+const CITY_ZOOM=4.5;        // zoom in beyond this level and the company logos appear
+const COMPANY_LIMIT=60;     // how many companies are drawn at once
+const COMPANY_PIN_SIZE=42;  // logo circle size in pixels (also set in style.css)
+
+function isCityMode() {
+  return !!window.careerMap&&window.careerMap.getZoom()>=CITY_ZOOM;
+}
+
+// The biggest bubbles come first. A smaller one is hidden when it would sit on a bigger one.
+// Zoom in and the hidden ones appear.
 function declutterMarkers() {
   const map=window.careerMap;
-  if(!map||!window.careerMapMarkers) return;
+  if(!map) return;
+  const cityMode=isCityMode();
   const placed=[];
-  window.careerMapMarkers.forEach(item=>{
-    let show=item.allowed!==false;
-    if(show){
-      const point=map.project(item.lngLat);
-      if(placed.some(other=>Math.hypot(other.x-point.x,other.y-point.y)<MARKER_SIZE*0.95)) show=false;
-      else placed.push(point);
-    }
+  const place=(x,y,size)=>{
+    if(placed.some(other=>Math.hypot(other.x-x,other.y-y)<(other.size+size)/2*0.9)) return false;
+    placed.push({x,y,size});
+    return true;
+  };
+  (window.careerMapMarkers||[]).forEach(item=>{
+    let show=!cityMode&&item.allowed!==false;
+    if(show){const point=map.project(item.lngLat);show=place(point.x,point.y,item.size);}
+    item.el.style.display=show?'':'none';
+  });
+  (window.careerCompanyMarkers||[]).forEach(item=>{
+    let show=cityMode;
+    if(show){const point=map.project(item.lngLat);show=place(point.x+item.offset[0],point.y+item.offset[1],item.size);}
     item.el.style.display=show?'':'none';
   });
 }
 
-// Website of each company: used to load its real logo.
-const COMPANY_DOMAINS={
-  Google:'google.com',Microsoft:'microsoft.com',Amazon:'amazon.com',Apple:'apple.com',Meta:'meta.com',
-  Tesla:'tesla.com',Spotify:'spotify.com',ASML:'asml.com',Swisscom:'swisscom.ch',NVIDIA:'nvidia.com'
-};
+// ---- Company logos ----
+// Logos come from Logo.dev (free key). Without a key you see a colored letter instead.
+function logoName(name) {
+  const cleaned=String(name).replace(/\(.*?\)/g,' ')
+    .replace(/\b(gmbh|ag|se|kg|ug|ltd|limited|inc|llc|b\.?v\.?|n\.?v\.?|s\.?a\.?|plc|group|holding|corp|corporation)\b\.?/gi,' ')
+    .replace(/[&,]+/g,' ').replace(/\s+/g,' ').trim();
+  return cleaned||String(name);
+}
+function avatarColor(name) {
+  let hash=0;
+  for(const char of String(name)) hash=(hash*31+char.charCodeAt(0))%360;
+  return `hsl(${hash},55%,42%)`;
+}
+function companyLogoHtml(name) {
+  const initial=escapeHtml(String(name).trim().charAt(0).toUpperCase()||'?');
+  const hasToken=LOGO_DEV_TOKEN&&!LOGO_DEV_TOKEN.startsWith('PASTE');
+  const image=hasToken
+    ? `<img src="https://img.logo.dev/name/${encodeURIComponent(logoName(name))}?token=${encodeURIComponent(LOGO_DEV_TOKEN)}&size=96&format=png" alt="" loading="lazy" onload="this.parentElement.classList.add('has-logo')" onerror="this.remove()">`
+    : '';
+  return `<span class="company-logo" style="background:${avatarColor(name)}"><b>${initial}</b>${image}</span>`;
+}
 
-// Company marker: shows the real logo in a white circle.
-// Logo.dev is used when a token is set (sharper), otherwise Google's free favicon service.
-// If no logo loads, the colored letter circle stays.
-function companyLogo(company) {
-  const fallback=`<span class="map-company-fallback" style="--company-color:${company.color}">${company.name[0]}</span>`;
-  const domain=COMPANY_DOMAINS[company.name]||`${company.name.toLowerCase().replace(/[^a-z0-9]/g,'')}.com`;
-  const hasToken=LOGO_DEV_TOKEN && !LOGO_DEV_TOKEN.startsWith('PASTE');
-  const logoUrl=hasToken
-    ? `https://img.logo.dev/${domain}?token=${LOGO_DEV_TOKEN}&size=128`
-    : `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
-  const img=`<img src="${logoUrl}" alt="${company.name} logo" style="display:none" onload="this.style.display='block';this.previousElementSibling.style.display='none'" onerror="this.remove()">`;
-  return `<span class="map-company-pin">${fallback}${img}</span>`;
+// Companies in the same city are spread around the city point (like sunflower seeds),
+// so their logos do not sit on top of each other.
+function sunflowerOffset(index,size) {
+  if(index===0) return [0,0];
+  const radius=size*Math.sqrt(index);
+  const angle=index*2.399963;
+  return [Math.round(radius*Math.cos(angle)),Math.round(radius*Math.sin(angle))];
+}
+
+function companyPopupHtml(item,jobs) {
+  const jobList=jobs.map(job=>
+    `<li><div><a href="${safeUrl(job.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(job.title)}</a>`+
+    `<small>${escapeHtml([job.job_type,job.work_mode].filter(Boolean).join(' - '))}</small></div></li>`).join('');
+  return `<div class="country-popup"><div class="popup-head">${companyLogoHtml(item.company)}<div>`+
+    `<h4>${escapeHtml(item.company)}</h4>`+
+    `<div class="popup-count">${escapeHtml(item.city)}, ${escapeHtml(item.country)} - <b>${formatNumber(item.openings)}</b> open jobs</div>`+
+    `</div></div><h5>Open jobs</h5><ul>${jobList||'<li>No data</li>'}</ul></div>`;
+}
+
+async function loadCompanyDetails(item,popup) {
+  const query=`company=${encodeURIComponent(item.company)}&city=${encodeURIComponent(item.city)}`;
+  try {
+    const jobs=await fetchJson(`/jobs?${query}&limit=6`);
+    popup.setHTML(companyPopupHtml(item,jobs));
+  } catch(error) {
+    console.error(error);
+    popup.setHTML(`<div class="country-popup"><h4>${escapeHtml(item.company)}</h4><div class="popup-count">Could not load details.</div></div>`);
+  }
+}
+
+function clearCompanyMarkers() {
+  (window.careerCompanyMarkers||[]).forEach(item=>item.marker.remove());
+  window.careerCompanyMarkers=[];
+}
+
+let companyRequestId=0;
+let companyTimer=null;
+
+// Ask the API for the companies inside the part of the map you are looking at.
+async function loadCompanyMarkers() {
+  const map=window.careerMap;
+  if(!map) return;
+  const requestId=++companyRequestId;   // lets us ignore answers that arrive too late
+
+  if(!isCityMode()){clearCompanyMarkers();declutterMarkers();return;}
+
+  const bounds=map.getBounds();
+  const query=`/company-markers?min_lat=${bounds.getSouth()}&max_lat=${bounds.getNorth()}`+
+    `&min_lng=${Math.max(-180,bounds.getWest())}&max_lng=${Math.min(180,bounds.getEast())}`+
+    `&limit=${COMPANY_LIMIT}&jobs=${isChecked('#jobs-toggle')}&internships=${isChecked('#internships-toggle')}`;
+  let rows;
+  try {
+    rows=await fetchJson(query);
+    hideApiNotice();
+  } catch(error) {
+    console.error(error);
+    showApiNotice('Could not reach the API. Start it with: uvicorn src.api.main:app --reload');
+    return;
+  }
+  if(requestId!==companyRequestId) return;   // the map moved again: a newer request is running
+
+  clearCompanyMarkers();
+  const countInCity={};
+  window.careerCompanyMarkers=rows.map(row=>{
+    const cityKey=`${row.city}|${row.country}`;
+    const index=countInCity[cityKey]||0;
+    countInCity[cityKey]=index+1;
+    const offset=sunflowerOffset(index,COMPANY_PIN_SIZE);
+
+    const el=document.createElement('div');
+    el.className='cm-marker';
+    el.title=`${row.company} - ${row.city}`;
+    el.innerHTML=`<span class="company-pin" style="width:${COMPANY_PIN_SIZE}px;height:${COMPANY_PIN_SIZE}px">`+
+      `${companyLogoHtml(row.company)}${row.openings>1?`<i class="pin-count">${formatNumber(row.openings)}</i>`:''}</span>`;
+
+    const lngLat=[Number(row.longitude),Number(row.latitude)];
+    const item={company:row.company,city:row.city,country:row.country,openings:row.openings,el,lngLat,offset,size:COMPANY_PIN_SIZE};
+    const popup=new maplibregl.Popup({offset:[offset[0],offset[1]-COMPANY_PIN_SIZE/2-6],maxWidth:'320px'})
+      .setHTML(`<div class="country-popup"><h4>${escapeHtml(row.company)}</h4><div class="popup-count">Loading...</div></div>`);
+    popup.on('open',()=>loadCompanyDetails(item,popup));
+    item.marker=new maplibregl.Marker({element:el,offset}).setLngLat(lngLat).setPopup(popup).addTo(map);
+    return item;
+  });
+  declutterMarkers();
+}
+
+function scheduleCompanyLoad() {
+  clearTimeout(companyTimer);
+  companyTimer=setTimeout(loadCompanyMarkers,250);   // wait until the map stops moving
+}
+
+// The text inside a country popup.
+function popupHtml(item,companies,jobs) {
+  const companyList=companies.map(company=>
+    `<li><div>${escapeHtml(company.company)}</div><span>${formatNumber(company.openings)}</span></li>`).join('');
+  const jobList=jobs.map(job=>
+    `<li><div><a href="${safeUrl(job.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(job.title)}</a>`+
+    `<small>${escapeHtml(job.company)}${job.city?' - '+escapeHtml(job.city):''}</small></div></li>`).join('');
+  return `<div class="country-popup"><h4>${escapeHtml(item.country)}</h4>`+
+    `<div class="popup-count"><b>${formatNumber(item.jobs)}</b> jobs, <b>${formatNumber(item.internships)}</b> internships</div>`+
+    `<h5>Top hiring companies</h5><ul>${companyList||'<li>No data</li>'}</ul>`+
+    `<h5>Latest jobs</h5><ul>${jobList||'<li>No data</li>'}</ul></div>`;
+}
+
+// When a bubble is clicked, ask the API for that country's top companies and latest jobs.
+async function loadCountryDetails(item,popup) {
+  const country=encodeURIComponent(item.country);
+  try {
+    const [companies,jobs]=await Promise.all([
+      fetchJson(`/companies?country=${country}&limit=5`),
+      fetchJson(`/jobs?country=${country}&limit=5`)
+    ]);
+    popup.setHTML(popupHtml(item,companies,jobs));
+  } catch(error) {
+    console.error(error);
+    popup.setHTML(`<div class="country-popup"><h4>${escapeHtml(item.country)}</h4><div class="popup-count">Could not load details.</div></div>`);
+  }
+}
+
+// Fill the country dropdown with the countries that really have jobs.
+function fillCountryDropdown(markers) {
+  const select=document.querySelector('#map-country');
+  if(!select) return;
+  const current=select.value;
+  select.innerHTML='';
+  const allOption=document.createElement('option');
+  allOption.value='all';allOption.textContent='All Countries';
+  select.appendChild(allOption);
+  markers.map(marker=>marker.country).sort((a,b)=>a.localeCompare(b)).forEach(country=>{
+    const option=document.createElement('option');
+    option.value=country;option.textContent=country;
+    select.appendChild(option);
+  });
+  select.value=markers.some(marker=>marker.country===current)?current:'all';
+}
+
+// Ask the API for the country markers and draw them on the map.
+async function loadMarkers() {
+  const map=window.careerMap;
+  if(!map) return;
+  let markers=[];
+  try {
+    markers=await fetchJson(`/map-markers?jobs=${isChecked('#jobs-toggle')}&internships=${isChecked('#internships-toggle')}`);
+    hideApiNotice();
+  } catch(error) {
+    console.error(error);
+    showApiNotice('Could not reach the API. Start it with: uvicorn src.api.main:app --reload');
+  }
+
+  (window.careerMapMarkers||[]).forEach(item=>item.marker.remove());   // remove old bubbles
+  const maxCount=Math.max(1,...markers.map(marker=>marker.jobs));
+  window.careerMapMarkers=markers.map(data=>{
+    const size=Math.round(38+30*Math.sqrt(data.jobs/maxCount));   // bigger country = bigger bubble
+    const el=document.createElement('div');
+    el.className='cm-marker';
+    el.title=`${data.country}: ${formatNumber(data.jobs)} jobs`;
+    el.innerHTML=`<span class="country-bubble" style="width:${size}px;height:${size}px"><b>${formatNumber(data.jobs)}</b></span>`;
+
+    const lngLat=[Number(data.longitude),Number(data.latitude)];
+    const item={country:data.country,jobs:data.jobs,internships:data.internships,el,lngLat,size,allowed:true};
+    const popup=new maplibregl.Popup({offset:size/2+6,maxWidth:'300px'})
+      .setHTML(`<div class="country-popup"><h4>${escapeHtml(data.country)}</h4><div class="popup-count">Loading...</div></div>`);
+    popup.on('open',()=>loadCountryDetails(item,popup));
+    item.marker=new maplibregl.Marker({element:el}).setLngLat(lngLat).setPopup(popup).addTo(map);
+    return item;
+  });
+  fillCountryDropdown(markers);
+  updateMapFilters();
+}
+
+// A small card on the map with the total number of jobs in the database.
+async function loadTotals() {
+  const target=document.querySelector('#career-map');
+  const card=target?target.parentElement:null;
+  if(!card) return;
+  try {
+    const stats=await fetchJson('/stats');
+    let badge=card.querySelector('.map-total');
+    if(!badge){badge=document.createElement('div');badge.className='map-total';card.appendChild(badge);}
+    badge.innerHTML=`<b>${formatNumber(stats.total_jobs)}</b><small>jobs in the database</small><small class="hint">Zoom in to see companies</small>`;
+  } catch(error) {
+    console.warn('Stats failed:',error);
+  }
 }
 
 // ---- Interactive world map: MapLibre GL + free OpenFreeMap vector tiles (no API key) ----
@@ -104,7 +328,6 @@ const TEXT_ON_LAND='#e6edff', HALO_ON_LAND='#0a1020';           // labels on lan
 const TEXT_ON_WATER='#8fa6d6', HALO_ON_WATER='#04060c';         // labels on water
 const WATERWAY='#1b3a78', ROAD='#2a3a66', ROAD_CASING='#0c1428'; // rivers and roads
 const LABELS_START_ZOOM=3;   // country and ocean names appear from this zoom (world view stays clean)
-const MARKER_SIZE=38;        // company logo circle size in pixels (also set in style.css)
 
 function loadMapLibre() {
   return new Promise((resolve,reject)=>{
@@ -248,20 +471,11 @@ async function initMap() {
   map.addControl(new maplibregl.NavigationControl({showCompass:false}),'top-right');
   window.careerMap=map;
 
-  // Company markers: round pins (letter or logo) with a popup on click.
-  window.careerMapMarkers=companies.map(company=>{
-    const el=document.createElement('div');
-    el.className='cm-marker';
-    el.innerHTML=companyLogo(company);
-    const popup=new maplibregl.Popup({offset:30,maxWidth:'260px'}).setHTML(`<div class="company-popup"><b>${company.name}</b><span>${company.role}</span><small>${company.city}</small><em>${company.tag}</em></div>`);
-    new maplibregl.Marker({element:el}).setLngLat([company.coords[1],company.coords[0]]).setPopup(popup).addTo(map);
-    return {kind:company.kind,country:company.country,el,lngLat:[company.coords[1],company.coords[0]],allowed:true};
-  });
-  updateMapFilters();
+  window.careerMapMarkers=[];   // filled by loadMarkers() with real data from the API
 
   let ready=false;
-  map.on('load',()=>{ready=true;keepWorldFit(map);declutterMarkers();});
-  map.on('zoomend',declutterMarkers);
+  map.on('load',()=>{ready=true;keepWorldFit(map);loadMarkers();loadTotals();});
+  map.on('moveend',()=>{declutterMarkers();scheduleCompanyLoad();});
   map.on('resize',declutterMarkers);
   map.on('error',()=>{
     if(!ready&&notice){notice.textContent='Could not load the map. Check your internet connection.';notice.hidden=false;}
@@ -273,18 +487,17 @@ document.querySelectorAll('[data-notif-tab]').forEach(button=>button.addEventLis
   document.querySelectorAll('[data-notif-tab]').forEach(tab=>tab.classList.remove('active'));
   button.classList.add('active');renderNotifications(button.dataset.notifTab);
 }));
-document.querySelectorAll('.map-filter-row input').forEach(input=>input.addEventListener('change',updateMapFilters));
+// Jobs / Internships checkboxes: ask the API again, so the numbers change.
+document.querySelectorAll('.map-filter-row input').forEach(input=>input.addEventListener('change',()=>{loadMarkers();loadCompanyMarkers();}));
+// Country dropdown: fly to that country.
 document.querySelector('#map-country')?.addEventListener('change',event=>{
   updateMapFilters();
   const map=window.careerMap;
   if(!map) return;
   const country=event.target.value;
   if(country==='all'){fitWorld(map);return;}
-  const places=companies.filter(item=>item.country===country);
-  if(!places.length) return;
-  const bounds=new maplibregl.LngLatBounds();
-  places.forEach(item=>bounds.extend([item.coords[1],item.coords[0]]));
-  map.fitBounds(bounds,{padding:80,maxZoom:6,duration:1200});
+  const item=(window.careerMapMarkers||[]).find(marker=>marker.country===country);
+  if(item) map.flyTo({center:item.lngLat,zoom:5,duration:1200});
 });
 document.querySelector('#reset-map')?.addEventListener('click',()=>{
   const countrySelect=document.querySelector('#map-country');if(countrySelect) countrySelect.value='all';
