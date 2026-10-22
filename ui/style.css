@@ -100,6 +100,13 @@
   .stat-card{padding:10px}
 }
 
+/* Free-text country lookup with live suggestions from the API. */
+.map-country-label input{width:132px!important;height:25px!important;padding:0 7px!important;border:0!important;border-right:1px solid #343b4c!important;border-radius:0!important;background:transparent!important;color:#d3d7e2!important;font-size:12px!important;outline:0!important;accent-color:auto!important}
+.map-country-label input::placeholder{color:#9aa3b8;opacity:1}
+.map-country-status{max-width:230px;color:#ffb969;font-size:10px;white-space:normal}
+.map-country-status:empty{display:none}
+@media(max-width:700px){.map-country-label input{width:105px!important;font-size:9px!important}.map-country-status{font-size:8px}}
+
 /* The map is the entire center workspace, with a compact filter row above it. */
 html,body{height:100%;min-height:100%;overflow:hidden}
 .app-shell{height:100vh;min-height:680px;grid-template-columns:240px minmax(0,1fr) 320px;overflow:hidden}

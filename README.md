@@ -6,6 +6,8 @@ Zoomed out, the map shows how many jobs each country has. Zoom in, and company l
 
 ![Dashboard](docs/images/dashboard.png)
 
+![Global Career Map city-level dashboard view](docs/images/dashboard-city-view.png)
+
 ## What this project shows
 
 - **ETL pipeline**: Extract (API) -> Transform (pandas) -> Load (PostgreSQL), started with one command.
@@ -13,6 +15,7 @@ Zoomed out, the map shows how many jobs each country has. Zoom in, and company l
 - **Geocoding with a cache**: every city is looked up online only once, so re-runs are fast and polite to the free service.
 - **Safe re-runs (idempotent loads)**: running the pipeline again updates existing jobs instead of creating duplicates.
 - **REST API** with filters, built with FastAPI, using parameterised SQL (no SQL injection).
+- **Country map search**: type any country with mapped jobs to focus the map; work-mode and job-type quick filters update the markers.
 - **Interactive dashboard**: MapLibre vector map, country bubbles, company logos, popups with real jobs.
 - **Automated tests** with pytest: 70 tests, no internet and no database needed.
 
@@ -161,8 +164,8 @@ pytest
 | `GET /jobs` | Jobs, newest first. Filters: `country`, `city`, `company`, `job_type`, `work_mode`, `search`, `limit`, `offset` |
 | `GET /stats` | Totals for the dashboard (jobs, new today, companies, countries) |
 | `GET /companies` | Companies with the most open jobs (optional `country`) |
-| `GET /map-markers` | One marker per country with the number of jobs |
-| `GET /company-markers` | Companies per city inside the visible map area |
+| `GET /map-markers` | One marker per country with the number of jobs; optional `jobs`, `internships`, `work_mode`, and `job_type` filters |
+| `GET /company-markers` | Companies per city inside the visible map area; supports the same filters plus `country` |
 
 ## Data model
 
@@ -187,7 +190,7 @@ Account data is stored in `users` and `auth_sessions` in the same PostgreSQL dat
 - **"Where the company is" means "where the job is".** The source gives the job location, not the company address.
 - **About 80% of the jobs get a city position.** The rest are remote jobs or have no usable location.
 - **Old jobs stay in the database.** Jobs that disappear from the source are not marked as closed yet.
-- The sidebar, notifications and alerts panels of the dashboard are design placeholders and are not connected to data.
+- Notification and alert examples are currently demo content and are not saved to the database. The map and quick filters use live job data from the API.
 
 ## Ideas for the future
 

@@ -314,7 +314,12 @@ def top_companies(limit: int = 10, country: str | None = None):
 
 
 @app.get("/map-markers")
-def map_markers(jobs: bool = True, internships: bool = True):
+def map_markers(
+    jobs: bool = True,
+    internships: bool = True,
+    work_mode: str | None = None,
+    job_type: str | None = None,
+):
     """One marker per country: position and number of jobs (for the world map).
 
     jobs=false      -> leave out normal jobs
@@ -325,8 +330,15 @@ def map_markers(jobs: bool = True, internships: bool = True):
         return []
 
     conditions = ["latitude IS NOT NULL", "longitude IS NOT NULL"]
+    params = {}
     if kind:
         conditions.append(kind)
+    if work_mode:
+        conditions.append("work_mode = :work_mode")
+        params["work_mode"] = work_mode
+    if job_type:
+        conditions.append("job_type = :job_type")
+        params["job_type"] = job_type
 
     sql = f"""
         SELECT
@@ -340,7 +352,7 @@ def map_markers(jobs: bool = True, internships: bool = True):
         GROUP BY country
         ORDER BY jobs DESC
     """
-    return run_query(sql)
+    return run_query(sql, params)
 
 
 @app.get("/company-markers")
@@ -352,6 +364,9 @@ def company_markers(
     limit: int = 60,
     jobs: bool = True,
     internships: bool = True,
+    country: str | None = None,
+    work_mode: str | None = None,
+    job_type: str | None = None,
 ):
     """Companies that hire in a city, inside the part of the map you are looking at.
 
@@ -367,6 +382,12 @@ def company_markers(
         "latitude BETWEEN :min_lat AND :max_lat",
         "longitude BETWEEN :min_lng AND :max_lng",
     ]
+    if country:
+        conditions.append("country = :country")
+    if work_mode:
+        conditions.append("work_mode = :work_mode")
+    if job_type:
+        conditions.append("job_type = :job_type")
     if kind:
         conditions.append(kind)
 
@@ -390,4 +411,10 @@ def company_markers(
         "min_lng": min(min_lng, max_lng), "max_lng": max(min_lng, max_lng),
         "limit": max(1, min(limit, 200)),
     }
+    if country:
+        params["country"] = country
+    if work_mode:
+        params["work_mode"] = work_mode
+    if job_type:
+        params["job_type"] = job_type
     return run_query(sql, params)

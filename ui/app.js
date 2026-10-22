@@ -30,6 +30,10 @@ function renderNotifications(kind='all') {
 // ---- Real data from the API (src/api/main.py) ----
 // Start the API first:  uvicorn src.api.main:app --reload
 const API_URL='http://127.0.0.1:8000';
+let activeMapFilters={workMode:'',jobType:''};
+function normalizeCountry(value) {
+  return String(value||'').trim().toLocaleLowerCase();
+}
 
 async function fetchJson(path) {
   const response=await fetch(API_URL+path);
@@ -61,14 +65,21 @@ function hideApiNotice() {
   if(notice) notice.hidden=true;
 }
 
-// Show only the markers allowed by the country dropdown, and hide bubbles that would overlap.
+// Show only the markers allowed by the country search, and hide overlapping bubbles.
 function updateMapFilters() {
-  const countrySelect=document.querySelector('#map-country');
-  const selected=countrySelect?countrySelect.value:'all';
+  const countryInput=document.querySelector('#map-country');
+  const query=countryInput?countryInput.value.trim():'';
+  const markers=window.careerMapMarkers||[];
+  const selected=query?markers.find(item=>normalizeCountry(item.country)===normalizeCountry(query)):null;
+  const status=document.querySelector('#map-country-status');
+  if(status) status.textContent=query&&!selected
+    ?`No mapped jobs found for "${query}". Choose a country from the suggestions.`
+    :!query&&!markers.length?'No map locations match these filters.':'';
   (window.careerMapMarkers||[]).forEach(item=>{
-    item.allowed=selected==='all'||item.country===selected;
+    item.allowed=!query||item===selected;
   });
   declutterMarkers();
+  return selected;
 }
 
 // ---- Two levels on the map ----
@@ -175,9 +186,20 @@ async function loadCompanyMarkers() {
   if(!isCityMode()){clearCompanyMarkers();declutterMarkers();return;}
 
   const bounds=map.getBounds();
-  const query=`/company-markers?min_lat=${bounds.getSouth()}&max_lat=${bounds.getNorth()}`+
-    `&min_lng=${Math.max(-180,bounds.getWest())}&max_lng=${Math.min(180,bounds.getEast())}`+
-    `&limit=${COMPANY_LIMIT}&jobs=${isChecked('#jobs-toggle')}&internships=${isChecked('#internships-toggle')}`;
+  const params=new URLSearchParams({
+    min_lat:String(bounds.getSouth()),max_lat:String(bounds.getNorth()),
+    min_lng:String(Math.max(-180,bounds.getWest())),max_lng:String(Math.min(180,bounds.getEast())),
+    limit:String(COMPANY_LIMIT),jobs:String(isChecked('#jobs-toggle')),
+    internships:String(isChecked('#internships-toggle')),
+  });
+  const countryInput=document.querySelector('#map-country');
+  const countryQuery=countryInput?countryInput.value.trim():'';
+  const selectedCountry=countryQuery&&(window.careerMapMarkers||[]).find(item=>normalizeCountry(item.country)===normalizeCountry(countryQuery));
+  if(countryQuery&&!selectedCountry){clearCompanyMarkers();return;}
+  if(selectedCountry) params.set('country',selectedCountry.country);
+  if(activeMapFilters.workMode) params.set('work_mode',activeMapFilters.workMode);
+  if(activeMapFilters.jobType) params.set('job_type',activeMapFilters.jobType);
+  const query=`/company-markers?${params.toString()}`;
   let rows;
   try {
     rows=await fetchJson(query);
@@ -249,19 +271,18 @@ async function loadCountryDetails(item,popup) {
 
 // Fill the country dropdown with the countries that really have jobs.
 function fillCountryDropdown(markers) {
-  const select=document.querySelector('#map-country');
-  if(!select) return;
-  const current=select.value;
-  select.innerHTML='';
-  const allOption=document.createElement('option');
-  allOption.value='all';allOption.textContent='All Countries';
-  select.appendChild(allOption);
-  markers.map(marker=>marker.country).sort((a,b)=>a.localeCompare(b)).forEach(country=>{
+  const datalist=document.querySelector('#map-country-options');
+  const select=document.querySelector('#country-filter');
+  const current=select?select.value:'';
+  if(datalist) datalist.replaceChildren();
+  if(select) select.innerHTML='<option value="">All countries</option>';
+  [...new Set(markers.map(marker=>marker.country).filter(Boolean))].sort((a,b)=>a.localeCompare(b)).forEach(country=>{
     const option=document.createElement('option');
     option.value=country;option.textContent=country;
-    select.appendChild(option);
+    if(datalist) datalist.appendChild(option.cloneNode(true));
+    if(select) select.appendChild(option);
   });
-  select.value=markers.some(marker=>marker.country===current)?current:'all';
+  if(select) select.value=markers.some(marker=>marker.country===current)?current:'';
 }
 
 // Ask the API for the country markers and draw them on the map.
@@ -270,7 +291,10 @@ async function loadMarkers() {
   if(!map) return;
   let markers=[];
   try {
-    markers=await fetchJson(`/map-markers?jobs=${isChecked('#jobs-toggle')}&internships=${isChecked('#internships-toggle')}`);
+    const params=new URLSearchParams({jobs:String(isChecked('#jobs-toggle')),internships:String(isChecked('#internships-toggle'))});
+    if(activeMapFilters.workMode) params.set('work_mode',activeMapFilters.workMode);
+    if(activeMapFilters.jobType) params.set('job_type',activeMapFilters.jobType);
+    markers=await fetchJson(`/map-markers?${params.toString()}`);
     hideApiNotice();
   } catch(error) {
     console.error(error);
@@ -488,21 +512,78 @@ document.querySelectorAll('[data-notif-tab]').forEach(button=>button.addEventLis
   button.classList.add('active');renderNotifications(button.dataset.notifTab);
 }));
 // Jobs / Internships checkboxes: ask the API again, so the numbers change.
-document.querySelectorAll('.map-filter-row input').forEach(input=>input.addEventListener('change',()=>{loadMarkers();loadCompanyMarkers();}));
-// Country dropdown: fly to that country.
-document.querySelector('#map-country')?.addEventListener('change',event=>{
-  updateMapFilters();
+document.querySelectorAll('.map-filter-row input[type="checkbox"]').forEach(input=>input.addEventListener('change',()=>{loadMarkers();loadCompanyMarkers();}));
+document.querySelectorAll('[data-nav-kind]').forEach(link=>link.addEventListener('click',event=>{
+  const kind=link.dataset.navKind;
+  if(kind==='companies'){
+    const selected=updateMapFilters();
+    const target=selected||(window.careerMapMarkers||[]).find(item=>item.allowed!==false);
+    if(target&&window.careerMap) window.careerMap.flyTo({center:target.lngLat,zoom:CITY_ZOOM+0.5,duration:1200});
+    return;
+  }
+  event.preventDefault();
+  document.querySelector('#map')?.scrollIntoView({behavior:'smooth',block:'start'});
+  const jobs=document.querySelector('#jobs-toggle');
+  const internships=document.querySelector('#internships-toggle');
+  const showJobs=kind==='jobs';
+  jobs.checked=showJobs;
+  internships.checked=!showJobs;
+  activeMapFilters.jobType=showJobs?'':'Internship';
+  document.querySelector('#type-filter').value=activeMapFilters.jobType;
+  loadMarkers();
+  loadCompanyMarkers();
+}));
+// Country search: keep only the chosen country's markers and zoom to it.
+function applyCountryInput() {
+  const countryInput=document.querySelector('#map-country');
+  const query=countryInput?countryInput.value.trim():'';
+  const selected=updateMapFilters();
+  const quickCountry=document.querySelector('#country-filter');
+  if(selected){
+    countryInput.value=selected.country;
+    if(quickCountry) quickCountry.value=selected.country;
+  } else if(quickCountry) quickCountry.value='';
   const map=window.careerMap;
-  if(!map) return;
-  const country=event.target.value;
-  if(country==='all'){fitWorld(map);return;}
-  const item=(window.careerMapMarkers||[]).find(marker=>marker.country===country);
-  if(item) map.flyTo({center:item.lngLat,zoom:5,duration:1200});
+  if(!query){if(map) fitWorld(map);loadCompanyMarkers();return;}
+  if(!selected){clearCompanyMarkers();return;}
+  if(map) map.flyTo({center:selected.lngLat,zoom:5,duration:1200});
+  loadCompanyMarkers();
+}
+document.querySelector('#map-country')?.addEventListener('change',applyCountryInput);
+document.querySelector('#country-filter')?.addEventListener('change',event=>{
+  const input=document.querySelector('#map-country');
+  if(input) input.value=event.target.value;
+  applyCountryInput();
 });
-document.querySelector('#reset-map')?.addEventListener('click',()=>{
-  const countrySelect=document.querySelector('#map-country');if(countrySelect) countrySelect.value='all';
-  updateMapFilters();
-  if(window.careerMap) fitWorld(window.careerMap);
+document.querySelector('.apply-filter')?.addEventListener('click',async()=>{
+  activeMapFilters={
+    workMode:document.querySelector('#mode-filter')?.value||'',
+    jobType:document.querySelector('#type-filter')?.value||'',
+  };
+  const country=document.querySelector('#country-filter')?.value||'';
+  const input=document.querySelector('#map-country');
+  if(input) input.value=country;
+  await loadMarkers();
+  applyCountryInput();
+  loadCompanyMarkers();
+});
+document.querySelector('.reset-filters')?.addEventListener('click',async()=>{
+  document.querySelector('#country-filter').value='';
+  document.querySelector('#mode-filter').value='';
+  document.querySelector('#type-filter').value='';
+  activeMapFilters={workMode:'',jobType:''};
+  document.querySelector('#map-country').value='';
+  await loadMarkers();
+  applyCountryInput();
+});
+document.querySelector('#reset-map')?.addEventListener('click',async()=>{
+  document.querySelector('#country-filter').value='';
+  document.querySelector('#map-country').value='';
+  activeMapFilters={workMode:'',jobType:''};
+  document.querySelector('#mode-filter').value='';
+  document.querySelector('#type-filter').value='';
+  await loadMarkers();
+  applyCountryInput();
 });
 document.querySelector('#mark-read')?.addEventListener('click',()=>{notifications.forEach(item=>item.unread=false);renderNotifications(document.querySelector('[data-notif-tab].active').dataset.notifTab);});
 document.querySelector('.create-alert')?.addEventListener('click',()=>{

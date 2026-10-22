@@ -73,10 +73,12 @@ The dashboard never talks to the database directly. It asks the API:
 | Dashboard action | API call |
 |---|---|
 | Open the map | `GET /map-markers`, `GET /stats` |
+| Search for a country or apply quick filters | `GET /map-markers?work_mode=...&job_type=...`; country names are suggested from returned map data |
 | Zoom in beyond level 4.5 | `GET /company-markers` for the visible map area |
 | Click a country bubble | `GET /companies?country=...`, `GET /jobs?country=...` |
 | Click a company logo | `GET /jobs?company=...&city=...` |
 | Tick or untick Jobs / Internships | `GET /map-markers?jobs=...&internships=...` |
+| Zoom in to company markers | `GET /company-markers` with the map bounds and active country, work-mode, and job-type filters |
 
 Login and registration call `POST /auth/login` and `POST /auth/register`. Successful requests return a random bearer token; the database stores only its SHA-256 hash in `auth_sessions`. Passwords use salted scrypt hashes in `users`. The dashboard validates the session with `GET /auth/me` and revokes it with `POST /auth/logout`. The API creates the account tables on the first auth request, and `sql/001_create_tables.sql` includes them for manual setup too.
 
