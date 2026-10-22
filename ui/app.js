@@ -511,3 +511,33 @@ document.querySelector('.create-alert')?.addEventListener('click',()=>{
 });
 try{renderAlerts();renderNotifications();}catch(error){console.warn('Panels failed:',error);}
 initMap().catch(error=>console.error('Map failed:',error));
+
+// Show the signed-in account and revoke its session when the profile is clicked.
+async function loadProfile() {
+  const token=sessionStorage.getItem('careerMapToken');
+  const link=document.querySelector('#profile-link');
+  if(!link||!token) return;
+  try {
+    const response=await fetch(`${API_URL}/auth/me`,{headers:{Authorization:`Bearer ${token}`}});
+    if(!response.ok) throw new Error('Session expired');
+    const user=await response.json();
+    const initials=user.name.trim().split(/\s+/).slice(0,2).map(part=>part[0]).join('').toUpperCase();
+    document.querySelector('#profile-name').textContent=user.name;
+    document.querySelector('#profile-avatar').textContent=initials;
+    document.querySelector('#profile-status').textContent='Sign out';
+    link.href='#sign-out';
+    link.setAttribute('aria-label',`Sign out ${user.name}`);
+    link.addEventListener('click',async(event)=>{
+      event.preventDefault();
+      try {await fetch(`${API_URL}/auth/logout`,{method:'POST',headers:{Authorization:`Bearer ${token}`}});} catch(error) {console.warn('Could not revoke session:',error);}
+      sessionStorage.removeItem('careerMapToken');
+      sessionStorage.removeItem('careerMapUser');
+      window.location.reload();
+    },{once:true});
+  } catch(error) {
+    sessionStorage.removeItem('careerMapToken');
+    sessionStorage.removeItem('careerMapUser');
+    console.info('No active account session:',error.message);
+  }
+}
+loadProfile();

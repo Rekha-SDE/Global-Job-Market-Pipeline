@@ -86,7 +86,7 @@ Global-Job-Market-Pipeline/
 ### 2. Download the project and install the packages
 
 ```powershell
-git clone https://github.com/YOUR_USERNAME/Global-Job-Market-Pipeline.git
+git clone https://github.com/Rekha-SDE/Global-Job-Market-Pipeline.git
 cd Global-Job-Market-Pipeline
 python -m venv venv
 .\venv\Scripts\Activate.ps1
@@ -154,6 +154,10 @@ pytest
 
 | Endpoint | What it returns |
 |---|---|
+| `POST /auth/register` | Creates an account and starts a session |
+| `POST /auth/login` | Signs in and starts a session |
+| `GET /auth/me` | Returns the signed-in account for a bearer token |
+| `POST /auth/logout` | Ends the current session |
 | `GET /health` | API and database check |
 | `GET /jobs` | Jobs, newest first. Filters: `country`, `city`, `company`, `job_type`, `work_mode`, `search`, `limit`, `offset` |
 | `GET /stats` | Totals for the dashboard (jobs, new today, companies, countries) |
@@ -175,6 +179,8 @@ One table, `jobs` (see `sql/001_create_tables.sql`):
 | `latitude`, `longitude` | position of the city (or of the country if the city is unknown) |
 | `location_precision` | `city`, `country` or `none` |
 | `posted_at`, `loaded_at` | when the job was posted and when it was saved |
+
+Account data is stored in `users` and `auth_sessions` in the same PostgreSQL database. Passwords use salted scrypt hashes; browser session tokens are random and only their SHA-256 hashes are stored in the database.
 
 ## Known limitations
 
