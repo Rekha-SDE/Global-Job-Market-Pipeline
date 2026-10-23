@@ -40,3 +40,38 @@
 2026-10-22 07:45:37 | INFO | Clean the jobs                       82.2 s   OK
 2026-10-22 07:45:37 | INFO | Load the jobs into PostgreSQL         0.7 s   OK
 2026-10-22 07:45:37 | INFO | Pipeline finished successfully in 91.1 s.
+2026-10-22 12:37:20 | INFO | === Step 1 of 3: Fetch jobs from Arbeitnow ===
+2026-10-22 12:37:20 | INFO | Starting Arbeitnow ingestion.
+2026-10-22 12:37:20 | INFO | Fetching page 1 of 5 ...
+2026-10-22 12:37:30 | INFO | Page 1 returned 300 jobs.
+2026-10-22 12:37:31 | INFO | Fetching page 2 of 5 ...
+2026-10-22 12:37:37 | INFO | Page 2 returned 300 jobs.
+2026-10-22 12:37:38 | INFO | Fetching page 3 of 5 ...
+2026-10-22 12:37:46 | INFO | Page 3 returned 300 jobs.
+2026-10-22 12:37:47 | INFO | Fetching page 4 of 5 ...
+2026-10-22 12:37:55 | INFO | Page 4 returned 300 jobs.
+2026-10-22 12:37:56 | INFO | Fetching page 5 of 5 ...
+2026-10-22 12:38:02 | INFO | Page 5 returned 290 jobs.
+2026-10-22 12:38:02 | INFO | Done. Saved 1490 jobs from 5 pages.
+2026-10-22 12:38:02 | INFO | File: C:\Global-Job-Market-Pipeline\data\raw\arbeitnow_20261022_123802.json
+2026-10-22 12:38:02 | INFO | === Step 2 of 3: Clean the jobs ===
+2026-10-22 12:38:02 | INFO | Reading arbeitnow_20261022_123802.json
+2026-10-22 12:38:03 | INFO | Looking up 9 new cities (cities already known: 304).
+2026-10-22 12:38:23 | INFO | Raw jobs: 1490 | Clean jobs: 1472 | Removed: 18
+2026-10-22 12:38:23 | INFO | Job types: {'Full-time': 1215, 'Contract': 124, 'Internship': 92, 'Part-time': 41}
+2026-10-22 12:38:23 | INFO | Work modes: {'On-site': 1018, 'Hybrid': 338, 'Remote': 116}
+2026-10-22 12:38:23 | INFO | Top countries: {'Germany': 422, 'Switzerland': 240, 'France': 231, 'United Kingdom': 222, 'Netherlands': 217, 'Remote': 68, 'Unknown': 64, 'Russia': 3}
+2026-10-22 12:38:23 | INFO | Location precision: {'city': 1242, 'none': 132, 'country': 98}
+2026-10-22 12:38:23 | INFO | 64 jobs have an unknown country. Most common locations: [('(empty)', 43), ('Stuttgart Schockenriedstr', 3), ('Werken op afstand', 2), ('Wangen-Brüttisellen', 2), ('Poste à distance', 2), ('Hochdahler Markt', 1), ('Runa London', 1), ('Risch-Rotkreuz', 1), ('Manufacturing & Testing Facility', 1), ('Langweid am Lech', 1)]
+2026-10-22 12:38:23 | INFO | Tip: add these cities to src/transformation/geo.py to improve the map.
+2026-10-22 12:38:23 | INFO | Saved 1472 rows to C:\Global-Job-Market-Pipeline\data\processed\jobs_clean.csv
+2026-10-22 12:38:23 | INFO | === Step 3 of 3: Load the jobs into PostgreSQL ===
+2026-10-22 12:38:23 | INFO | Read 1472 clean jobs from jobs_clean.csv
+2026-10-22 12:38:23 | INFO | Inserted 91 new jobs, updated 1381 jobs that already existed.
+2026-10-22 12:38:23 | INFO | The table 'jobs' now has 2788 rows.
+2026-10-22 12:38:23 | INFO | Top countries in the database: [('Germany', 894), ('France', 454), ('United Kingdom', 443), ('Switzerland', 381), ('Netherlands', 318)]
+2026-10-22 12:38:23 | INFO | --- Summary ---
+2026-10-22 12:38:23 | INFO | Fetch jobs from Arbeitnow            41.3 s   OK
+2026-10-22 12:38:23 | INFO | Clean the jobs                       21.0 s   OK
+2026-10-22 12:38:23 | INFO | Load the jobs into PostgreSQL         0.7 s   OK
+2026-10-22 12:38:23 | INFO | Pipeline finished successfully in 63.1 s.

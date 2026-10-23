@@ -15,11 +15,13 @@ import hashlib
 import hmac
 import secrets
 import re
+from pathlib import Path
 
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from sqlalchemy import text
+from fastapi.staticfiles import StaticFiles
 
 from src.database.connection import get_engine
 
@@ -418,3 +420,9 @@ def company_markers(
     if job_type:
         params["job_type"] = job_type
     return run_query(sql, params)
+
+
+# Serve the dashboard and API from one public origin in production. This keeps
+# browser requests same-origin and avoids a separate frontend API URL setting.
+UI_DIRECTORY = Path(__file__).resolve().parents[2] / "ui"
+app.mount("/", StaticFiles(directory=UI_DIRECTORY, html=True), name="ui")

@@ -29,7 +29,8 @@ function renderNotifications(kind='all') {
 }
 // ---- Real data from the API (src/api/main.py) ----
 // Start the API first:  uvicorn src.api.main:app --reload
-const API_URL='http://127.0.0.1:8000';
+// Use the same origin in production. Live Server keeps its local API fallback.
+const API_URL=(window.CAREER_API_URL || (location.port === '5500' ? 'http://127.0.0.1:8000' : '')).replace(/\/$/, '');
 let activeMapFilters={workMode:'',jobType:''};
 function normalizeCountry(value) {
   return String(value||'').trim().toLocaleLowerCase();

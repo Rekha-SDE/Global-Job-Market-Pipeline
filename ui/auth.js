@@ -8,6 +8,9 @@ document.querySelectorAll('[data-password-toggle]').forEach((button) => {
   });
 });
 
+// Use the same origin in production. Live Server keeps its local API fallback.
+const API_URL = (window.CAREER_API_URL || (location.port === '5500' ? 'http://127.0.0.1:8000' : '')).replace(/\/$/, '');
+
 document.querySelectorAll('[data-auth-form]').forEach((form) => {
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -28,7 +31,7 @@ document.querySelectorAll('[data-auth-form]').forEach((form) => {
     button.disabled = true;
     message.hidden = true;
     try {
-      const response = await fetch(`http://127.0.0.1:8000/auth/${isRegistration ? 'register' : 'login'}`, {
+      const response = await fetch(`${API_URL}/auth/${isRegistration ? 'register' : 'login'}`, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(payload),
