@@ -6,6 +6,8 @@ Zoomed out, the map shows how many jobs each country has. Zoom in, and company l
 
 ![Dashboard](docs/images/dashboard.png)
 
+![City view with company logos](docs/images/dashboard-city-view.png)
+
 ![Global Career Map city-level dashboard view](docs/images/dashboard-city-view.png)
 
 ## What this project shows
